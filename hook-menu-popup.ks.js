@@ -111,10 +111,14 @@ if (listeners.length > 0) {
 var menus = document.getElementById("main-menubar").childNodes;
 for (let i=0;i<menus.length;++i) {
     let popup = menus[i].firstChild;
-    addListener(popup, callMainMenuPopupShowing, callMainMenuPopupHiding);
+    if (popup)
+      addListener(popup, callMainMenuPopupShowing, callMainMenuPopupHiding);
 }
 var contextMenu = document.getElementById("contentAreaContextMenu");
 addListener(contextMenu, callContextMenuPopupShowing, callContextMenuPopupHiding);
+
+var appMenu = document.getElementById("appmenu-popup");
+if (appMenu) addListener(appMenu, callMainMenuPopupShowing, callMainMenuPopupHiding);
 
 hook.addToHook("Unload", removeListeners);
 
