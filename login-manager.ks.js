@@ -107,6 +107,17 @@ var services = {
             CSRFPROTECT: tokenGetter(/CSRFPROTECT.+value="(.+?)"/),
         },
     },
+    google: {
+        HOST: ['https://www.google.com', 'https://www.google.co.jp'],
+        LOGIN: '/accounts/LoginAuth',
+        LOGOUT: '/accounts/Logout',
+        usernameField: 'Email',
+        passwordField: 'Passwd',
+        extraField: {
+            GALX: function() util.httpGet('https://www.google.com/accounts/LoginAuth')
+                    .responseText.match(/<[^<>]*?name="GALX"[^<>]*?>/)[0].match(/value="(.+)"/)[1],
+        },
+    },
 };
 for (name in services){
     services[name] = new Service(services[name]);
@@ -150,8 +161,8 @@ function Service(service) //{{{
         let host = service.HOST[0];
         if (service.extraField && !self.setExtraField(content)) return false;
         let logoutURL = host+service.LOGOUT;
-        let error = function() display.echoStatusBar('logout failed "'+host+'" as '+username);
-        let success = function() display.echoStatusBar('logout "'+host+'" as '+username);
+        let error = function() display.echoStatusBar('logout failed "'+host);
+        let success = function() display.echoStatusBar('logout "'+host);
         request(logoutURL, content, success, error);
     };
     self.getLogins = function() {
