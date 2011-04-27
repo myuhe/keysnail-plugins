@@ -248,7 +248,7 @@ pOptions['auto_login'].forEach(function(s) {
     let username = latestLogins[s];
     if (!username) return;
 
-util.fbug('auto login: ' + username + '@' + s);
+util.message('auto login: ' + username + '@' + s);
     let service = services[s];
     service.login(username);
 });
