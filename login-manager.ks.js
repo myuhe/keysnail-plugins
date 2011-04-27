@@ -8,14 +8,15 @@ var PLUGIN_INFO =
     <license>CC0</license>
     <minVersion>1.5.1</minVersion>
     <include>main</include>
-    <provides>
-        <ext>login-manager-login</ext>
-        <ext>login-manager-logout</ext>
-    </provides>
-    <options>
-    </options>
     <detail><![CDATA[]]></detail>
 </KeySnailPlugin>;
+
+let pOptions = plugins.setupOptions('login_manager', {
+    'auto_login': {
+        preset: [],
+        description: M({ja: '起動時に自動ログインするサービス', en: 'Auto login services'})
+    }
+}, PLUGIN_INFO);
 
 var loginManager = Cc["@mozilla.org/login-manager;1"].getService(Ci.nsILoginManager);
 
@@ -79,12 +80,19 @@ var services = {
     },
     twitter: {
         HOST: ["https://twitter.com", "http://twitter.com"],
-        LOGIN: "/sessions",
-        LOGOUT: "/sessions/destroy",
+        LOGIN: "/sessions?phx=1",
+        LOGOUT: "/logout",
         usernameField: "session[username_or_email]",
         passwordField: "session[password]",
+        logoutBeforeLogin: true,
         extraField: {
-            authenticity_token: tokenGetter(/authenticity_token.+value="(.+?)"/),
+            authenticity_token: function(service) {
+                try {
+                    return util.httpGet(service.HOST[0]).responseText.match(/<[^<>]*?name='authenticity_token'[^<>]*?>/)[0].match(/value='([^']+)'/)[1];
+                }catch(e){
+                    return 'dummy';
+                }
+            },
         },
     },
     "wassr.com": {
@@ -108,13 +116,13 @@ var services = {
         },
     },
     google: {
-        HOST: ['https://www.google.com', 'https://www.google.co.jp'],
+        HOST: ['https://www.google.com'],
         LOGIN: '/accounts/LoginAuth',
         LOGOUT: '/accounts/Logout',
         usernameField: 'Email',
         passwordField: 'Passwd',
         extraField: {
-            GALX: function() util.httpGet('https://www.google.com/accounts/LoginAuth')
+            GALX: function(service) util.httpGet(service.HOST[0] + service.LOGIN)
                     .responseText.match(/<[^<>]*?name="GALX"[^<>]*?>/)[0].match(/value="(.+)"/)[1],
         },
     },
@@ -150,20 +158,20 @@ function Service(service) //{{{
         let success = function(e) display.echoStatusBar('login "'+host+'" as '+username);
         let login = function() request(loginURL, content, success, error);
         if (service.logoutBeforeLogin) {
-            let logoutURL = host+service.LOGOUT;
-            return request(logoutURL, content, login, error);
+            return self.logout(login);
         }
 
         login();
     };
-    self.logout = function(){
+    self.logout = function(overrideSuccess){
         let content = {};
         let host = service.HOST[0];
         if (service.extraField && !self.setExtraField(content)) return false;
         let logoutURL = host+service.LOGOUT;
         let error = function() display.echoStatusBar('logout failed "'+host);
         let success = function() display.echoStatusBar('logout "'+host);
-        request(logoutURL, content, success, error);
+
+        request(logoutURL, content, overrideSuccess || success, error);
     };
     self.getLogins = function() {
         return [loginManager.findLogins({}, host, "", null) for each(host in service.HOST)]
@@ -233,38 +241,65 @@ function tokenGetter(pattern)
 let loginList = [[[s, u] for each (u in services[s].getUsernames())] for (s in services)].reduce(function (acc, login) acc.concat(login), []);
 let logoutList = [[s] for (s in services)];
 
-ext.add("login-manager-login", function (ev, arg) {
-    prompt.selector({
-        message: "Log In (LoginManager)",
-        callback: function (index) {
-            let [servicename, username] = loginList[index];
-            let service = services[servicename];
-            if (!service) {
-                display.echoStatusBar(servicename + "service not found");
-                return false;
-            }
-            service.login(username);
-        },
-        header: ["Service", "Username"],
-        collection: loginList,
-        initialInput: arg,
-    });
-    }, "Log In (LoginManager)");
-ext.add("login-manager-logout", function (ev, arg) {
-    prompt.selector({
-        message: "Log Out (LoginManager)",
-        callback: function (index) {
-            let servicename = logoutList[index][0];
-            let service = services[servicename];
-            if (!service) {
-                display.echoStatusBar(servicename + "service not found");
-                return false;
-            }
-            service.logout();
-        },
-        header: ["Service"],
-        collection: logoutList,
-        initialInput: arg,
-    });
-    }, "Log Out (LoginManager)");
+const LATEST_KEY = 'login_manager_latest';
+let latestLogins = persist.restore(LATEST_KEY) || {};
+
+pOptions['auto_login'].forEach(function(s) {
+    let username = latestLogins[s];
+    if (!username) return;
+
+util.fbug('auto login: ' + username + '@' + s);
+    let service = services[s];
+    service.login(username);
+});
+
+plugins.withProvides(function (provide) {
+    provide("login-manager-login", function (ev, arg) {
+        prompt.selector({
+            message: "Log In (LoginManager)",
+            callback: function (index) {
+                let [servicename, username] = loginList[index];
+                let service = services[servicename];
+                if (!service) {
+                    display.echoStatusBar(servicename + "service not found");
+                    return false;
+                }
+                service.login(username);
+
+                let s = pOptions['auto_login'].map(function(s) servicename === s);
+                if (s.length > 0) {
+                    latestLogins[servicename] = username;
+                    persist.preserve(latestLogins, LATEST_KEY);
+                }
+            },
+            header: ["Service", "Username"],
+            collection: loginList,
+            initialInput: arg,
+        });
+        }, "Log In (LoginManager)");
+    provide("login-manager-logout", function (ev, arg) {
+        prompt.selector({
+            message: "Log Out (LoginManager)",
+            callback: function (index) {
+                let servicename = logoutList[index][0];
+                let service = services[servicename];
+                if (!service) {
+                    display.echoStatusBar(servicename + "service not found");
+                    return false;
+                }
+                service.logout();
+
+                let s = pOptions['auto_login'].map(function(s) servicename === s);
+                if (s.length > 0) {
+                    delete latestLogins[servicename];
+                    persist.preserve(latestLogins, LATEST_KEY);
+                }
+            },
+            header: ["Service"],
+            collection: logoutList,
+            initialInput: arg,
+        });
+        }, "Log Out (LoginManager)");
+}, PLUGIN_INFO);
+
 // vim: fdm=marker fenc=utf-8 sw=4 ts=4 et:
