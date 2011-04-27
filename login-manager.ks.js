@@ -14,7 +14,7 @@ var PLUGIN_INFO =
 let pOptions = plugins.setupOptions('login_manager', {
     'auto_login': {
         preset: [],
-        description: M({ja: 'µ¯Æ°»ş¤Ë¼«Æ°¥í¥°¥¤¥ó¤¹¤ë¥µ¡¼¥Ó¥¹', en: 'Auto login services'})
+        description: M({ja: 'èµ·å‹•æ™‚ã«è‡ªå‹•ãƒ­ã‚°ã‚¤ãƒ³ã™ã‚‹ã‚µãƒ¼ãƒ“ã‚¹', en: 'Auto login services'})
     }
 }, PLUGIN_INFO);
 
