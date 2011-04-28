@@ -244,14 +244,18 @@ let logoutList = [[s] for (s in services)];
 const LATEST_KEY = 'login_manager_latest';
 let latestLogins = persist.restore(LATEST_KEY) || {};
 
-pOptions['auto_login'].forEach(function(s) {
-    let username = latestLogins[s];
-    if (!username) return;
+if (!share.loginManagerAutoLogined) {
+    share.loginManagerAutoLogined = true;
+    pOptions['auto_login'].forEach(function(s) {
+        let username = latestLogins[s];
+        if (!username) return;
 
-util.message('auto login: ' + username + '@' + s);
-    let service = services[s];
-    service.login(username);
-});
+        util.message('auto login: ' + username + '@' + s);
+
+        let service = services[s];
+        service.login(username);
+    });
+}
 
 plugins.withProvides(function (provide) {
     provide("login-manager-login", function (ev, arg) {
