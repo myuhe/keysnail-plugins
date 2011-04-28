@@ -17,20 +17,44 @@ var PLUGIN_INFO =
 </KeySnailPlugin>;
 
 ext.add("greasemonkey-execute-command", function () {
-    var menuItems = GM_BrowserUI.getCommander(content).menuItems;
-    if (menuItems.length == 0) {
-        display.echoStatusBar("No Greasemonkey Menu Command");
-        return false;
+    if (GM_BrowserUI.getCommander) {
+        let menuItems = GM_BrowserUI.getCommander(content).menuItems;
+        if (menuItems.length == 0) {
+            display.echoStatusBar("No Greasemonkey Menu Command");
+            return false;
+        }
+        let commandList = [menuItems[i].getAttribute('label') for (i in menuItems)];
+        prompt.selector({
+            message: "Menu Command (Greasemonkey)",
+            callback: function (index) {
+                let item = menuItems[index];
+                return item._commandFunc();
+            },
+            header: ["Command"],
+            collection: commandList,
+        });
+    } else {
+        let menuItems = [];
+        GM_BrowserUI.gmSvc.withAllMenuCommandsForWindowId(
+            GM_windowId(gBrowser.contentWindow),
+            function(index, command) {
+                if (command.frozen) return;
+                menuItems.push(command);
+            });
+        if (menuItems.length == 0) {
+            display.echoStatusBar("No Greasemonkey Menu Command");
+            return false;
+        }
+        let commandList = [menuItems[i].name for (i in menuItems)];
+        prompt.selector({
+            message: "Menu Command (Greasemonkey)",
+            callback: function (index) {
+                let item = menuItems[index];
+                return item.commandFunc();
+            },
+            header: ["Command"],
+            collection: commandList,
+        });
     }
-    var commandList = [menuItems[i].getAttribute('label') for (i in menuItems)];
-    prompt.selector({
-        message: "Menu Command (Greasemonkey)",
-        callback: function (index) {
-            var item = menuItems[index];
-            return item._commandFunc();
-        },
-        header: ["Command"],
-        collection: commandList,
-    });
-    }, "Execute Greasemonkey Menu Command");
+}, "Execute Greasemonkey Menu Command");
 // vim: fenc=utf-8 sw=4 ts=4 et:
