@@ -72,11 +72,14 @@ var services = {
         },
     },
     tumblr: {
-        HOST: ["http://www.tumblr.com"],
-        LOGIN: "/login",
+        HOST: ["https://www.tumblr.com"],
+        LOGIN: "/svc/account/register",
         LOGOUT: "/logout",
-        usernameField: "email",
-        passwordField: "password",
+        usernameField: "user[email]",
+        passwordField: "user[password]", 
+        extraField: {
+            action: 'signup_login'
+        },
     },
     twitter: {
         HOST: ["https://twitter.com", "http://twitter.com"],
