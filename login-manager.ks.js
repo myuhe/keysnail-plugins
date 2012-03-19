@@ -2,7 +2,7 @@ var PLUGIN_INFO =
 <KeySnailPlugin>
     <name>LoginManager</name>
     <description>LoginManager for KeySnail</description>
-    <version>0.0.3</version>
+    <version>0.0.4</version>
     <updateURL>http://github.com/hogelog/keysnail-plugins/raw/master/loginmanager.ks.js</updateURL>
     <author mail="konbu.komuro@gmail.com" homepage="http://hogel.org/">hogelog</author>
     <license>CC0</license>
@@ -128,6 +128,14 @@ var services = {
             GALX: function(service) util.httpGet(service.HOST[0] + service.LOGIN)
                     .responseText.match(/<[^<>]*?name="GALX"[^<>]*?>/)[0].match(/value="(.+)"/)[1],
         },
+    },
+
+    diigo: {
+        HOST: ['https://secure.diigo.com'],
+        LOGIN: '/sign-in',
+        LOGOUT: '/sign-out',
+        usernameField: 'username',
+        passwordField: 'password',
     },
 };
 for (name in services){
